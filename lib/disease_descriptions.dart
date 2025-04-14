@@ -1,0 +1,17 @@
+const Map<String, String> diseaseDescriptions = {
+  "Pepper__bell___Bacterial_spot": "Taches bactériennes sur le poivron...",
+  "Pepper__bell___healthy": "La plante est saine.",
+  "Potato___Early_blight": "Alternariose précoce...",
+  "Potato___Late_blight": "Mildiou tardif...",
+  "Potato___healthy": "La plante de pomme de terre est saine.",
+  "Tomato_Bacterial_spot": "Taches bactériennes sur la tomate...",
+  "Tomato_Early_blight": "Alternariose précoce sur tomate...",
+  "Tomato_Late_blight": "Mildiou de la tomate...",
+  "Tomato_Leaf_Mold": "Moisi des feuilles...",
+  "Tomato_Septoria_leaf_spot": "Septoriose foliaire...",
+  "Tomato_Spider_mites_Two_spotted_spider_mite": "Présence d'acariens...",
+  "Tomato__Target_Spot": "Tache cible...",
+  "Tomato__Tomato_YellowLeaf__Curl_Virus": "Virus de l'enroulement jaune...",
+  "Tomato__Tomato_mosaic_virus": "Virus de la mosaïque...",
+  "Tomato_healthy": "La plante de tomate est saine.",
+};
