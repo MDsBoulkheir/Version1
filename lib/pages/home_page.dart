@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hasad_app/pages/meteo.dart';
+import 'package:hasad_app/pages/meteo_page.dart';
 import 'drawer_widget.dart';
 import 'maladie_page.dart';
 

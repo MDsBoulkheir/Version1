@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class MeteoPage extends StatelessWidget {
-  const MeteoPage({super.key});
+class StaticMeteoPage  extends StatelessWidget {
+  const StaticMeteoPage({super.key});
 
   @override
   Widget build(BuildContext context) {
