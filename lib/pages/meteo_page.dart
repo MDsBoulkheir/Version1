@@ -11,6 +11,8 @@ class MeteoPage extends StatefulWidget {
 class _MeteoPageState extends State<MeteoPage> {
   Map<String, dynamic>? weatherData;
   Map<String, dynamic>? forecastData;
+  Map<String, dynamic>? tomorrowData;
+
   List<dynamic>? forecastList;
 
 
@@ -22,6 +24,9 @@ class _MeteoPageState extends State<MeteoPage> {
     loadWeather();
   }
 
+
+  Map<String, dynamic>? oneCallData;
+  
   Future<void> loadWeather() async {
   try {
     final data = await WeatherService.getOpenWeatherData("Nouakchott");
@@ -29,11 +34,13 @@ class _MeteoPageState extends State<MeteoPage> {
     final lon = data["coord"]["lon"];
     final soil = await WeatherService.getSoilMoisture(lat, lon);
     final forecast = await WeatherService.getForecastFromForecastApi("Nouakchott");
+    final tomorrow = await WeatherService.getTomorrowData(lat, lon);
 
     setState(() {
       weatherData = data;
       soilMoisture = soil;
       forecastList = forecast;
+      tomorrowData = tomorrow;
     });
   } catch (e) {
     print("Erreur de récupération météo : $e");
@@ -79,16 +86,17 @@ class _MeteoPageState extends State<MeteoPage> {
                 const SizedBox(height: 16),
                 _sectionTitle("Indicateurs agricoles"),
                 _infoGrid([
-                  _infoCard("Indice UV", "--", Icons.wb_sunny),
-                  _infoCard("Humidité du sol", "${soilMoisture?.toStringAsFixed(1) ?? "--"}%", Icons.eco),
-                  _infoCard("Point de rosée", "--", Icons.opacity),
-                  _infoCard("Humidité des feuilles", "--", Icons.grass),
-                ]),
+  _infoCard("Indice UV", "${tomorrowData?["uvIndex"]?.toStringAsFixed(1) ?? "--"}", Icons.wb_sunny),
+  _infoCard("Humidité du sol", "${soilMoisture?.toStringAsFixed(1) ?? "--"}%", Icons.eco),
+  _infoCard("Point de rosée", "${tomorrowData?["dewPoint"]?.toStringAsFixed(1) ?? "--"}°C", Icons.opacity),
+  _infoCard("Humidité", "${tomorrowData?["humidity"]?.toStringAsFixed(0) ?? "--"}%", Icons.grass),
+]),
                 const SizedBox(height: 16),
                 _sectionTitle("Conditions de culture"),
                 _infoGrid([
                   _infoCard("GDD", "--", Icons.device_thermostat),
-                  _infoCard("Évapotranspiration", "-- mm", Icons.invert_colors),
+                  _infoCard("Évapotranspiration", "${tomorrowData?["evapotranspiration"]?.toStringAsFixed(1) ?? "--"} mm", Icons.invert_colors),
+
                   _infoCard("Phase lunaire", "Pleine lune", Icons.nightlight),
                   _infoCard("Visibilité", "${weatherData?["visibility"] / 1000 ?? "--"} km", Icons.visibility),
                 ]),

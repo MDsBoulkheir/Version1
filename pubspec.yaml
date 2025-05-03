@@ -72,6 +72,7 @@ flutter:
   assets:
     - assets/plant_disease_model.tflite
     - assets/labels.txt
+    - assets/conseil_agri_model.tflite
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

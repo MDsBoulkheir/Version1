@@ -4,6 +4,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:hasad_app/plant_disease_model.dart';
 import 'package:hasad_app/disease_descriptions.dart';
 
+
+import 'package:hasad_app/models/detection_result.dart';
+import 'package:hive/hive.dart';
+
+
 class PhotoPage extends StatefulWidget {
   const PhotoPage({super.key});
 
@@ -38,16 +43,62 @@ class _PhotoPageState extends State<PhotoPage> {
     }
   }
 
-  Future<void> _analyzeImage() async {
-    if (_imageFile != null && _model != null) {
-      final label = await _model!.predict(_imageFile!); // 🔁 modèle IA
-      final desc = diseaseDescriptions[label] ?? "Aucune description disponible.";
-      setState(() {
-        _prediction = label;
-        _description = desc;
-      });
-    }
+  // Future<void> _analyzeImage() async {
+  //   if (_imageFile != null && _model != null) {
+  //     final label = await _model!.predict(_imageFile!); // 🔁 modèle IA
+  //     final desc = diseaseDescriptions[label] ?? "Aucune description disponible.";
+  //     setState(() {
+  //       _prediction = label;
+  //       _description = desc;
+  //     });
+  //   }
+  // }
+
+//   Future<void> _analyzeImage() async {
+//   if (_imageFile != null && _model != null) {
+//     final label = await _model!.predict(_imageFile!);
+
+//     // Message par défaut si l’image n’est pas valide
+//     final desc = diseaseDescriptions[label] ??
+//         (label == "Image non reconnue"
+//             ? "L’image ne semble pas contenir une plante valide. Veuillez réessayer avec une photo claire de la feuille ou du fruit."
+//             : "Aucune description disponible.");
+
+//     setState(() {
+//       _prediction = label;
+//       _description = desc;
+//     });
+//   }
+// }
+
+Future<void> _analyzeImage() async {
+  if (_imageFile != null && _model != null) {
+    final label = await _model!.predict(_imageFile!);
+
+    final desc = diseaseDescriptions[label] ??
+        (label == "Image non reconnue"
+            ? "L’image ne semble pas contenir une plante valide. Veuillez réessayer avec une photo claire de la feuille ou du fruit."
+            : "Aucune description disponible.");
+
+    setState(() {
+      _prediction = label;
+      _description = desc;
+    });
+
+    // ✅ Sauvegarde dans Hive
+    final result = DetectionResult(
+      label: label,
+      description: desc,
+      imagePath: _imageFile!.path,
+      date: DateTime.now(),
+    );
+
+    final box = await Hive.openBox<DetectionResult>('detection_results');
+    await box.add(result);
   }
+}
+
+
 
   void _showImageSourceOptions() {
     showModalBottomSheet(
@@ -122,15 +173,54 @@ class _PhotoPageState extends State<PhotoPage> {
 
               if (_prediction != null && _description != null) ...[
                 const SizedBox(height: 20),
-                Text("Résultat : $_prediction",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 10),
-                Text(
-                  _description!,
-                  style: const TextStyle(fontSize: 14),
-                  textAlign: TextAlign.justify,
-                ),
+                // Text("Résultat : $_prediction",
+                //     style: const TextStyle(
+                //         fontWeight: FontWeight.bold, fontSize: 16)),
+                // const SizedBox(height: 10),
+                // Text(
+                //   _description!,
+                //   style: const TextStyle(fontSize: 14),
+                //   textAlign: TextAlign.justify,
+                // ),
+
+                Container(
+  padding: const EdgeInsets.all(16),
+  margin: const EdgeInsets.symmetric(vertical: 12),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black12,
+        blurRadius: 8,
+        offset: Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        _prediction == "Image non reconnue"
+            ? "❗ Image non reconnue"
+            : "🩺 Résultat : $_prediction",
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 12),
+      Text(
+        _description ?? "",
+        style: const TextStyle(
+          fontSize: 14,
+          height: 1.5,
+        ),
+      ),
+    ],
+  ),
+),
+
               ]
             ],
           ),

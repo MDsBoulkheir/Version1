@@ -1,56 +1,118 @@
 import 'package:flutter/material.dart';
+import '../services/weather_service.dart';
 
-class StaticMeteoPage  extends StatelessWidget {
-  const StaticMeteoPage({super.key});
+class MeteoPage extends StatefulWidget {
+  const MeteoPage({super.key});
+
+  @override
+  State<MeteoPage> createState() => _MeteoPageState();
+}
+
+class _MeteoPageState extends State<MeteoPage> {
+  Map<String, dynamic>? weatherData;
+  Map<String, dynamic>? forecastData;
+  Map<String, dynamic>? tomorrowData;
+
+  List<dynamic>? forecastList;
+
+
+  double? soilMoisture;
+
+  @override
+  void initState() {
+    super.initState();
+    loadWeather();
+  }
+
+
+  Map<String, dynamic>? oneCallData;
+  
+  Future<void> loadWeather() async {
+  try {
+    final data = await WeatherService.getOpenWeatherData("Nouakchott");
+    final lat = data["coord"]["lat"];
+    final lon = data["coord"]["lon"];
+    final soil = await WeatherService.getSoilMoisture(lat, lon);
+    final forecast = await WeatherService.getForecastFromForecastApi("Nouakchott");
+    final tomorrow = await WeatherService.getTomorrowData(lat, lon);
+
+    setState(() {
+      weatherData = data;
+      soilMoisture = soil;
+      forecastList = forecast;
+      tomorrowData = tomorrow;
+    });
+  } catch (e) {
+    print("Erreur de récupération météo : $e");
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
+    final main = weatherData?["main"];
+    final wind = weatherData?["wind"];
+    final weather = weatherData?["weather"]?[0];
+    final rain = weatherData?["rain"]?["1h"] ?? 0.0;
+    final snow = weatherData?["snow"]?["1h"] ?? 0.0;
+
     return Scaffold(
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _currentWeather(),
-          const SizedBox(height: 16),
-          _sectionTitle("Conditions actuelles"),
-          _infoGrid([
-            _infoCard("Ressenti", "24.5°C", Icons.thermostat),
-            _infoCard("Humidité", "79%", Icons.water_drop),
-            _infoCard("Vent", "28.2 km/h", Icons.air),
-            _infoCard("Pression", "1011 hPa", Icons.speed),
-          ]),
-          const SizedBox(height: 16),
-          _sectionTitle("Précipitations"),
-          _infoGrid([
-            _infoCard("Pluie (1h)", "0.0 mm", Icons.water),
-            _infoCard("Neige (1h)", "0.0 mm", Icons.ac_unit),
-            _infoCard("Risques de pluie", "40%", Icons.grain),
-            _infoCard("Accum. 24h", "0.0 mm", Icons.house),
-          ]),
-          const SizedBox(height: 16),
-          _sectionTitle("Indicateurs agricoles"),
-          _infoGrid([
-            _infoCard("Indice UV", "0.0", Icons.wb_sunny),
-            _infoCard("Humidité du sol", "40%", Icons.eco),
-            _infoCard("Point de rosée", "20.1°C", Icons.opacity),
-            _infoCard("Humidité des feuilles", "79%", Icons.grass),
-          ]),
-          const SizedBox(height: 16),
-          _sectionTitle("Conditions de culture"),
-          _infoGrid([
-            _infoCard("GDD", "14.0", Icons.device_thermostat),
-            _infoCard("Évapotranspiration", "0.0 mm", Icons.invert_colors),
-            _infoCard("Phase lunaire", "Pleine lune", Icons.nightlight),
-            _infoCard("Visibilité", "10.0 km", Icons.visibility),
-          ]),
-          const SizedBox(height: 16),
-          _sectionTitle("Prévisions horaires"),
-          _hourlyForecast(),
-          const SizedBox(height: 16),
-          _sectionTitle("Prévisions sur 7 jours"),
-          _dailyForecast(),
-        ],
+      appBar: AppBar(
+        title: const Text("Météo"),
+        centerTitle: true,
       ),
+      body: weatherData == null
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                _currentWeather(main, weather),
+                const SizedBox(height: 16),
+                _sectionTitle("Conditions actuelles"),
+                _infoGrid([
+                  _infoCard("Ressenti", "${main["feels_like"]}°C", Icons.thermostat),
+                  _infoCard("Humidité", "${main["humidity"]}%", Icons.water_drop),
+                  _infoCard("Vent", "${wind["speed"]} km/h", Icons.air),
+                  _infoCard("Pression", "${main["pressure"]} hPa", Icons.speed),
+                ]),
+                const SizedBox(height: 16),
+                _sectionTitle("Précipitations"),
+                _infoGrid([
+                  _infoCard("Pluie (1h)", "$rain mm", Icons.water),
+                  _infoCard("Neige (1h)", "$snow mm", Icons.ac_unit),
+                  _infoCard("Risques de pluie", "${_getRainChance()}%", Icons.grain),
+                  _infoCard("Accum. 24h", "-- mm", Icons.house),
+                ]),
+                const SizedBox(height: 16),
+                _sectionTitle("Indicateurs agricoles"),
+                _infoGrid([
+  _infoCard("Indice UV", "${tomorrowData?["uvIndex"]?.toStringAsFixed(1) ?? "--"}", Icons.wb_sunny),
+  _infoCard("Humidité du sol", "${soilMoisture?.toStringAsFixed(1) ?? "--"}%", Icons.eco),
+  _infoCard("Point de rosée", "${tomorrowData?["dewPoint"]?.toStringAsFixed(1) ?? "--"}°C", Icons.opacity),
+  _infoCard("Humidité", "${tomorrowData?["humidity"]?.toStringAsFixed(0) ?? "--"}%", Icons.grass),
+]),
+                const SizedBox(height: 16),
+                _sectionTitle("Conditions de culture"),
+                _infoGrid([
+                  _infoCard("GDD", "--", Icons.device_thermostat),
+                  _infoCard("Évapotranspiration", "${tomorrowData?["evapotranspiration"]?.toStringAsFixed(1) ?? "--"} mm", Icons.invert_colors),
+
+                  _infoCard("Phase lunaire", "Pleine lune", Icons.nightlight),
+                  _infoCard("Visibilité", "${weatherData?["visibility"] / 1000 ?? "--"} km", Icons.visibility),
+                ]),
+                const SizedBox(height: 16),
+                _sectionTitle("Prévisions horaires"),
+                _hourlyForecast(),
+                const SizedBox(height: 16),
+                _sectionTitle("Prévisions sur 5 jours"),
+                _dailyForecast(),
+              ],
+            ),
     );
+  }
+
+  String _getRainChance() {
+    return (weatherData?["clouds"]?["all"] ?? 0).toString();
   }
 
   Widget _sectionTitle(String title) {
@@ -92,7 +154,7 @@ class StaticMeteoPage  extends StatelessWidget {
     );
   }
 
-  Widget _currentWeather() {
+  Widget _currentWeather(dynamic main, dynamic weather) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -100,130 +162,186 @@ class StaticMeteoPage  extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        children: const [
-          Text("Météo actuelle à Nouakchott",
+        children: [
+          const Text("Météo actuelle à Nouakchott",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 12),
-          Icon(Icons.cloud, color: Colors.blue, size: 48),
-          Text("24.0°C",
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
-          Text("Nuages épars",
-              style: TextStyle(fontSize: 16, color: Colors.black54)),
+          const SizedBox(height: 12),
+          const Icon(Icons.cloud, color: Colors.blue, size: 48),
+          Text("${main["temp"]}°C",
+              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
+          Text("${weather["description"]}",
+              style: const TextStyle(fontSize: 16, color: Colors.black54)),
         ],
       ),
     );
   }
 
-  Widget _hourlyForecast() {
-    final List<Map<String, dynamic>> hours = [
-      {"hour": "17:00", "temp": "20°C", "rain": "0%"},
-      {"hour": "18:00", "temp": "21°C", "rain": "1%"},
-      {"hour": "19:00", "temp": "22°C", "rain": "2%"},
-      {"hour": "20:00", "temp": "23°C", "rain": "3%"},
-    ];
+  // Widget _hourlyForecast() {
+  //   final List<Map<String, dynamic>> hours = [
+  //     {"hour": "17:00", "temp": "20°C", "rain": "0%"},
+  //     {"hour": "18:00", "temp": "21°C", "rain": "1%"},
+  //     {"hour": "19:00", "temp": "22°C", "rain": "2%"},
+  //     {"hour": "20:00", "temp": "23°C", "rain": "3%"},
+  //   ];
 
-    return SizedBox(
-      height: 120,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: hours.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, index) {
-          final data = hours[index];
-          return Container(
-            width: 80,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 4)
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(data["hour"],
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                const Icon(Icons.wb_cloudy, color: Colors.blue),
-                const SizedBox(height: 6),
-                Text(data["temp"]),
-                Text(data["rain"], style: const TextStyle(color: Colors.blue)),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  //   return SizedBox(
+  //     height: 120,
+  //     child: ListView.separated(
+  //       scrollDirection: Axis.horizontal,
+  //       itemCount: hours.length,
+  //       separatorBuilder: (_, __) => const SizedBox(width: 12),
+  //       itemBuilder: (_, index) {
+  //         final data = hours[index];
+  //         return Container(
+  //           width: 80,
+  //           padding: const EdgeInsets.all(12),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.circular(12),
+  //             boxShadow: const [
+  //               BoxShadow(color: Colors.black12, blurRadius: 4)
+  //             ],
+  //           ),
+  //           child: Column(
+  //             mainAxisAlignment: MainAxisAlignment.center,
+  //             children: [
+  //               Text(data["hour"],
+  //                   style: const TextStyle(fontWeight: FontWeight.bold)),
+  //               const SizedBox(height: 6),
+  //               const Icon(Icons.wb_cloudy, color: Colors.blue),
+  //               const SizedBox(height: 6),
+  //               Text(data["temp"]),
+  //               Text(data["rain"], style: const TextStyle(color: Colors.blue)),
+  //             ],
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
+
+  Widget _hourlyForecast() {
+  if (forecastList == null || forecastList!.isEmpty) {
+    return const Center(child: Text("Aucune prévision horaire disponible"));
   }
 
-  Widget _dailyForecast() {
-    final List<Map<String, dynamic>> days = [
-      {
-        "day": "Vendredi",
-        "min": 18,
-        "max": 22,
-        "rain": "0%",
-        "icon": Icons.wb_sunny
-      },
-      {
-        "day": "Samedi",
-        "min": 19,
-        "max": 23,
-        "rain": "5%",
-        "icon": Icons.cloud
-      },
-      {
-        "day": "Dimanche",
-        "min": 20,
-        "max": 24,
-        "rain": "10%",
-        "icon": Icons.wb_sunny
-      },
-      {
-        "day": "Lundi",
-        "min": 18,
-        "max": 25,
-        "rain": "15%",
-        "icon": Icons.cloud_queue
-      },
-      {
-        "day": "Mardi",
-        "min": 19,
-        "max": 22,
-        "rain": "20%",
-        "icon": Icons.wb_sunny
-      },
-      {
-        "day": "Mercredi",
-        "min": 18,
-        "max": 23,
-        "rain": "10%",
-        "icon": Icons.cloud
-      },
-      {
-        "day": "Jeudi",
-        "min": 19,
-        "max": 24,
-        "rain": "0%",
-        "icon": Icons.wb_sunny
-      },
-    ];
+  final now = DateTime.now();
 
-    return Column(
-      children: days.map((data) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          child: ListTile(
-            leading: Icon(data["icon"], color: Colors.blue),
-            title: Text(data["day"]),
-            subtitle: Text("Min: ${data["min"]}° / Max: ${data["max"]}°"),
-            trailing:
-                Text(data["rain"], style: const TextStyle(color: Colors.blue)),
+  final upcoming = forecastList!.where((entry) {
+    final date = DateTime.parse(entry["dt_txt"]).toLocal();
+    return date.isAfter(now);
+  }).take(8).toList();
+
+  if (upcoming.isEmpty) {
+    return const Center(child: Text("Aucune donnée horaire à venir"));
+  }
+
+  return SizedBox(
+    height: 130, // Hauteur ajustée
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: upcoming.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 12),
+      itemBuilder: (_, index) {
+        final data = upcoming[index];
+        final date = DateTime.parse(data["dt_txt"]).toLocal();
+        final hour = "${date.hour.toString().padLeft(2, '0')}:00";
+        final temp = "${data["main"]["temp"].round()}°C";
+        final rain = "${((data["pop"] ?? 0.0) * 100).round()}%";
+        final iconCode = data["weather"][0]["icon"];
+
+        return Container(
+          width: 80,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Text(
+                hour,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              Image.network(
+                "https://openweathermap.org/img/wn/$iconCode@2x.png",
+                width: 28,
+                height: 28,
+                errorBuilder: (_, __, ___) => const Icon(Icons.cloud, color: Colors.grey, size: 28),
+              ),
+              Text(
+                temp,
+                style: const TextStyle(fontSize: 14),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.grain, size: 12, color: Colors.blue),
+                  const SizedBox(width: 2),
+                  Text(
+                    rain,
+                    style: const TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
-      }).toList(),
-    );
+      },
+    ),
+  );
+}
+
+
+
+  Widget _dailyForecast() {
+  if (forecastList == null) {
+    return const Text("Aucune donnée disponible");
   }
+
+  // Grouper les données de forecast par jour (yyyy-MM-dd)
+  Map<String, List<dynamic>> dailyGroups = {};
+
+  for (var entry in forecastList!) {
+    final date = DateTime.parse(entry["dt_txt"]);
+    final key = "${date.year}-${date.month}-${date.day}";
+    dailyGroups.putIfAbsent(key, () => []).add(entry);
+  }
+
+  final today = DateTime.now();
+  final days = dailyGroups.entries
+      .where((e) {
+        final date = DateTime.parse(e.value.first["dt_txt"]);
+        return date.day != today.day || date.month != today.month;
+      })
+      .take(5) // Max 5 jours de prévision
+      .toList();
+
+  return Column(
+    children: days.map((data) {
+      final entries = data.value;
+
+      final date = DateTime.parse(entries.first["dt_txt"]);
+      final dayName = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"][date.weekday % 7];
+
+      final min = entries.map((e) => e["main"]["temp_min"] as num).reduce((a, b) => a < b ? a : b).round();
+      final max = entries.map((e) => e["main"]["temp_max"] as num).reduce((a, b) => a > b ? a : b).round();
+      final iconCode = entries.first["weather"][0]["icon"];
+      final rainChance = ((entries.map((e) => e["pop"] ?? 0.0).reduce((a, b) => a + b) / entries.length) * 100).round();
+
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        child: ListTile(
+          leading: Image.network("https://openweathermap.org/img/wn/$iconCode@2x.png", width: 40),
+          title: Text(dayName),
+          subtitle: Text("Min: $min° / Max: $max°"),
+          trailing: Text("$rainChance%", style: const TextStyle(color: Colors.blue)),
+        ),
+      );
+    }).toList(),
+  );
+}
+
 }
